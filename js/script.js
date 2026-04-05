@@ -1,57 +1,225 @@
-var sf = new Snowflakes({
-    color: "#ffd700",
-    minSize: 20
-});
-var url_string = window.location.href; //window.location.href
+/* ========== Floating Hearts ========== */
+var heartsContainer = document.getElementById('hearts-bg');
+var heartSymbols = ['\u2764', '\u2665', '\u2763', '\uD83D\uDC95', '\uD83D\uDC96', '\uD83D\uDC97', '\uD83D\uDC9D'];
+var heartColors = ['#ff6b9d', '#ff1493', '#ff69b4', '#e91e63', '#f06292', '#d81b60', '#c2185b'];
+
+function createHeart() {
+    var heart = document.createElement('div');
+    heart.className = 'floating-heart';
+    heart.innerHTML = heartSymbols[Math.floor(Math.random() * heartSymbols.length)];
+    heart.style.left = Math.random() * 100 + '%';
+    heart.style.fontSize = (Math.random() * 20 + 14) + 'px';
+    heart.style.color = heartColors[Math.floor(Math.random() * heartColors.length)];
+    heart.style.animationDuration = (Math.random() * 5 + 6) + 's';
+    heart.style.animationDelay = (Math.random() * 2) + 's';
+    heartsContainer.appendChild(heart);
+    setTimeout(function () {
+        if (heart.parentNode) heart.parentNode.removeChild(heart);
+    }, 13000);
+}
+
+var heartsInterval = null;
+function startHearts() {
+    heartsInterval = setInterval(createHeart, 400);
+}
+
+/* ========== Fireworks ========== */
+var fwCanvas = document.getElementById('fireworks');
+var fwCtx = fwCanvas.getContext('2d');
+var fireworks = [];
+var particles = [];
+var fwRunning = false;
+
+function resizeFwCanvas() {
+    fwCanvas.width = window.innerWidth;
+    fwCanvas.height = window.innerHeight;
+}
+
+function FWParticle(x, y, color) {
+    this.x = x;
+    this.y = y;
+    this.color = color;
+    var angle = Math.random() * Math.PI * 2;
+    var speed = Math.random() * 5 + 2;
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed;
+    this.alpha = 1;
+    this.decay = Math.random() * 0.02 + 0.015;
+}
+
+FWParticle.prototype.update = function () {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy += 0.05;
+    this.alpha -= this.decay;
+};
+
+FWParticle.prototype.draw = function () {
+    fwCtx.save();
+    fwCtx.globalAlpha = Math.max(this.alpha, 0);
+    fwCtx.fillStyle = this.color;
+    fwCtx.beginPath();
+    fwCtx.arc(this.x, this.y, 2.5, 0, Math.PI * 2);
+    fwCtx.fill();
+    fwCtx.restore();
+};
+
+function Firework(x, targetY) {
+    this.x = x;
+    this.y = window.innerHeight;
+    this.targetY = targetY;
+    this.speed = 4 + Math.random() * 3;
+    this.color = ['#ff6b9d', '#ffd700', '#ff1493', '#00e857', '#ff69b4', '#2bebbc', '#ff4500', '#ff00ff'][Math.floor(Math.random() * 8)];
+    this.exploded = false;
+}
+
+Firework.prototype.update = function () {
+    this.y -= this.speed;
+    if (this.y <= this.targetY) {
+        this.exploded = true;
+        for (var i = 0; i < 60; i++) {
+            particles.push(new FWParticle(this.x, this.y, this.color));
+        }
+    }
+};
+
+Firework.prototype.draw = function () {
+    fwCtx.fillStyle = this.color;
+    fwCtx.beginPath();
+    fwCtx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+    fwCtx.fill();
+};
+
+function fireworksLoop() {
+    if (!fwRunning) return;
+    fwCtx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+    fwCtx.fillRect(0, 0, fwCanvas.width, fwCanvas.height);
+
+    // Launch new fireworks randomly
+    if (Math.random() < 0.08) {
+        fireworks.push(new Firework(
+            Math.random() * fwCanvas.width,
+            Math.random() * fwCanvas.height * 0.5 + 50
+        ));
+    }
+
+    for (var i = fireworks.length - 1; i >= 0; i--) {
+        fireworks[i].update();
+        fireworks[i].draw();
+        if (fireworks[i].exploded) fireworks.splice(i, 1);
+    }
+
+    for (var j = particles.length - 1; j >= 0; j--) {
+        particles[j].update();
+        particles[j].draw();
+        if (particles[j].alpha <= 0) particles.splice(j, 1);
+    }
+
+    requestAnimationFrame(fireworksLoop);
+}
+
+function startFireworks() {
+    resizeFwCanvas();
+    fwCanvas.style.display = 'block';
+    fwRunning = true;
+    fireworksLoop();
+    // Stop fireworks after 4 seconds
+    setTimeout(function () {
+        fwRunning = false;
+        setTimeout(function () {
+            fwCtx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
+            fwCanvas.style.display = 'none';
+        }, 2000);
+    }, 4000);
+}
+
+/* ========== Sparkle particles on name ========== */
+function createSparkle() {
+    var nameEl = document.getElementById('name');
+    if (!nameEl) return;
+    var rect = nameEl.getBoundingClientRect();
+    var sparkle = document.createElement('div');
+    sparkle.style.position = 'fixed';
+    sparkle.style.left = (rect.left + Math.random() * rect.width) + 'px';
+    sparkle.style.top = (rect.top + Math.random() * rect.height) + 'px';
+    sparkle.style.width = '4px';
+    sparkle.style.height = '4px';
+    sparkle.style.borderRadius = '50%';
+    sparkle.style.background = ['#ffd700', '#ff69b4', '#fff', '#ff1493'][Math.floor(Math.random() * 4)];
+    sparkle.style.boxShadow = '0 0 6px 2px ' + sparkle.style.background;
+    sparkle.style.pointerEvents = 'none';
+    sparkle.style.zIndex = '99999';
+    sparkle.style.transition = 'all 0.8s ease-out';
+    sparkle.style.opacity = '1';
+    document.body.appendChild(sparkle);
+    setTimeout(function () {
+        sparkle.style.opacity = '0';
+        sparkle.style.transform = 'translateY(-20px) scale(0)';
+    }, 50);
+    setTimeout(function () {
+        if (sparkle.parentNode) sparkle.parentNode.removeChild(sparkle);
+    }, 900);
+}
+
+var sparkleInterval = null;
+function startSparkles() {
+    sparkleInterval = setInterval(createSparkle, 150);
+}
+
+/* ========== Main Setup ========== */
+var url_string = window.location.href;
 var url = new URL(url_string);
 var c = url.searchParams.get("name");
-console.log(c);
 if (c != null) {
     document.getElementById("name").innerHTML = c;
     document.getElementById("nae").innerHTML = c;
 }
+
 $(".main").fadeOut(1);
 $('#play').click(function () {
     $(".loader").fadeOut(1500);
     $(".main").fadeIn("slow");
-    sf.destroy();
+
+    // Start fireworks burst
+    startFireworks();
+
+    // Start floating hearts
+    startHearts();
+
+    // Start sparkle particles on name
+    startSparkles();
+
+    // Animate balloons
     $('.balloon-border').animate({
         top: -500
     }, 8000);
+
+    // Play music
     var audio = $('.song')[0];
     audio.play();
-
 });
+
 var typed = new Typed("#typed", {
     stringsElement: '#typed-strings',
     typeSpeed: 30,
     backSpeed: 10,
     loop: true
 });
-var retina = window.devicePixelRatio,
 
-    // Math shorthands
+/* ========== Confetti (original) ========== */
+var retina = window.devicePixelRatio,
     PI = Math.PI,
     sqrt = Math.sqrt,
     round = Math.round,
     random = Math.random,
     cos = Math.cos,
     sin = Math.sin,
-
-    // Local WindowAnimationTiming interface
     rAF = window.requestAnimationFrame,
     cAF = window.cancelAnimationFrame || window.cancelRequestAnimationFrame,
-    _now = Date.now || function () {
-        return new Date().getTime();
-    };
+    _now = Date.now || function () { return new Date().getTime(); };
 
-// Local WindowAnimationTiming interface polyfill
 (function (w) {
-    /**
-     * Fallback implementation.
-     */
     var prev = _now();
-
     function fallback(fn) {
         var curr = _now();
         var ms = Math.max(0, 16 - (curr - prev));
@@ -59,21 +227,9 @@ var retina = window.devicePixelRatio,
         prev = curr;
         return req;
     }
-
-    /**
-     * Cancel.
-     */
-    var cancel = w.cancelAnimationFrame ||
-        w.webkitCancelAnimationFrame ||
-        w.clearTimeout;
-
-    rAF = w.requestAnimationFrame ||
-        w.webkitRequestAnimationFrame ||
-        fallback;
-
-    cAF = function (id) {
-        cancel.call(w, id);
-    };
+    var cancel = w.cancelAnimationFrame || w.webkitCancelAnimationFrame || w.clearTimeout;
+    rAF = w.requestAnimationFrame || w.webkitRequestAnimationFrame || fallback;
+    cAF = function (id) { cancel.call(w, id); };
 }(window));
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -95,72 +251,38 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function Vector2(_x, _y) {
         this.x = _x, this.y = _y;
-        this.Length = function () {
-            return sqrt(this.SqrLength());
-        }
-        this.SqrLength = function () {
-            return this.x * this.x + this.y * this.y;
-        }
-        this.Add = function (_vec) {
-            this.x += _vec.x;
-            this.y += _vec.y;
-        }
-        this.Sub = function (_vec) {
-            this.x -= _vec.x;
-            this.y -= _vec.y;
-        }
-        this.Div = function (_f) {
-            this.x /= _f;
-            this.y /= _f;
-        }
-        this.Mul = function (_f) {
-            this.x *= _f;
-            this.y *= _f;
-        }
+        this.Length = function () { return sqrt(this.SqrLength()); }
+        this.SqrLength = function () { return this.x * this.x + this.y * this.y; }
+        this.Add = function (_vec) { this.x += _vec.x; this.y += _vec.y; }
+        this.Sub = function (_vec) { this.x -= _vec.x; this.y -= _vec.y; }
+        this.Div = function (_f) { this.x /= _f; this.y /= _f; }
+        this.Mul = function (_f) { this.x *= _f; this.y *= _f; }
         this.Normalize = function () {
             var sqrLen = this.SqrLength();
-            if (sqrLen != 0) {
-                var factor = 1.0 / sqrt(sqrLen);
-                this.x *= factor;
-                this.y *= factor;
-            }
+            if (sqrLen != 0) { var factor = 1.0 / sqrt(sqrLen); this.x *= factor; this.y *= factor; }
         }
         this.Normalized = function () {
             var sqrLen = this.SqrLength();
-            if (sqrLen != 0) {
-                var factor = 1.0 / sqrt(sqrLen);
-                return new Vector2(this.x * factor, this.y * factor);
-            }
+            if (sqrLen != 0) { var factor = 1.0 / sqrt(sqrLen); return new Vector2(this.x * factor, this.y * factor); }
             return new Vector2(0, 0);
         }
     }
     Vector2.Lerp = function (_vec0, _vec1, _t) {
         return new Vector2((_vec1.x - _vec0.x) * _t + _vec0.x, (_vec1.y - _vec0.y) * _t + _vec0.y);
     }
-    Vector2.Distance = function (_vec0, _vec1) {
-        return sqrt(Vector2.SqrDistance(_vec0, _vec1));
-    }
+    Vector2.Distance = function (_vec0, _vec1) { return sqrt(Vector2.SqrDistance(_vec0, _vec1)); }
     Vector2.SqrDistance = function (_vec0, _vec1) {
-        var x = _vec0.x - _vec1.x;
-        var y = _vec0.y - _vec1.y;
-        return (x * x + y * y + z * z);
+        var x = _vec0.x - _vec1.x; var y = _vec0.y - _vec1.y;
+        return (x * x + y * y);
     }
-    Vector2.Scale = function (_vec0, _vec1) {
-        return new Vector2(_vec0.x * _vec1.x, _vec0.y * _vec1.y);
-    }
-    Vector2.Min = function (_vec0, _vec1) {
-        return new Vector2(Math.min(_vec0.x, _vec1.x), Math.min(_vec0.y, _vec1.y));
-    }
-    Vector2.Max = function (_vec0, _vec1) {
-        return new Vector2(Math.max(_vec0.x, _vec1.x), Math.max(_vec0.y, _vec1.y));
-    }
+    Vector2.Scale = function (_vec0, _vec1) { return new Vector2(_vec0.x * _vec1.x, _vec0.y * _vec1.y); }
+    Vector2.Min = function (_vec0, _vec1) { return new Vector2(Math.min(_vec0.x, _vec1.x), Math.min(_vec0.y, _vec1.y)); }
+    Vector2.Max = function (_vec0, _vec1) { return new Vector2(Math.max(_vec0.x, _vec1.x), Math.max(_vec0.y, _vec1.y)); }
     Vector2.ClampMagnitude = function (_vec0, _len) {
         var vecNorm = _vec0.Normalized;
         return new Vector2(vecNorm.x * _len, vecNorm.y * _len);
     }
-    Vector2.Sub = function (_vec0, _vec1) {
-        return new Vector2(_vec0.x - _vec1.x, _vec0.y - _vec1.y, _vec0.z - _vec1.z);
-    }
+    Vector2.Sub = function (_vec0, _vec1) { return new Vector2(_vec0.x - _vec1.x, _vec0.y - _vec1.y); }
 
     function EulerMass(_x, _y, _mass, _drag) {
         this.position = new Vector2(_x, _y);
@@ -168,9 +290,7 @@ document.addEventListener("DOMContentLoaded", function () {
         this.drag = _drag;
         this.force = new Vector2(0, 0);
         this.velocity = new Vector2(0, 0);
-        this.AddForce = function (_f) {
-            this.force.Add(_f);
-        }
+        this.AddForce = function (_f) { this.force.Add(_f); }
         this.Integrate = function (_dt) {
             var acc = this.CurrentForce(this.position);
             acc.Div(this.mass);
@@ -215,7 +335,7 @@ document.addEventListener("DOMContentLoaded", function () {
             this.time += _dt;
             this.rotation += this.rotationSpeed * _dt;
             this.cosA = cos(DEG_TO_RAD * this.rotation);
-            this.pos.x += cos(this.time * this.oscillationSpeed) * this.xSpeed * _dt
+            this.pos.x += cos(this.time * this.oscillationSpeed) * this.xSpeed * _dt;
             this.pos.y += this.ySpeed * _dt;
             if (this.pos.y > ConfettiPaper.bounds.y) {
                 this.pos.x = random() * ConfettiPaper.bounds.x;
@@ -223,11 +343,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
         this.Draw = function (_g) {
-            if (this.cosA > 0) {
-                _g.fillStyle = this.frontColor;
-            } else {
-                _g.fillStyle = this.backColor;
-            }
+            if (this.cosA > 0) { _g.fillStyle = this.frontColor; } else { _g.fillStyle = this.backColor; }
             _g.beginPath();
             _g.moveTo((this.pos.x + this.corners[0].x * this.size) * retina, (this.pos.y + this.corners[0].y * this.size * this.cosA) * retina);
             for (var i = 1; i < 4; i++) {
@@ -276,9 +392,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 dirP.Mul((delta / _dt) * this.velocityInherit);
                 this.particles[i].AddForce(dirP);
             }
-            for (i = 1; i < this.particleCount; i++) {
-                this.particles[i].Integrate(_dt);
-            }
+            for (i = 1; i < this.particleCount; i++) { this.particles[i].Integrate(_dt); }
             for (i = 1; i < this.particleCount; i++) {
                 var rp2 = new Vector2(this.particles[i].position.x, this.particles[i].position.y);
                 rp2.Sub(this.particles[i - 1].position);
@@ -313,51 +427,39 @@ document.addEventListener("DOMContentLoaded", function () {
                 var p0 = new Vector2(this.particles[i].position.x + this.xOff, this.particles[i].position.y + this.yOff);
                 var p1 = new Vector2(this.particles[i + 1].position.x + this.xOff, this.particles[i + 1].position.y + this.yOff);
                 if (this.Side(this.particles[i].position.x, this.particles[i].position.y, this.particles[i + 1].position.x, this.particles[i + 1].position.y, p1.x, p1.y) < 0) {
-                    _g.fillStyle = this.frontColor;
-                    _g.strokeStyle = this.frontColor;
+                    _g.fillStyle = this.frontColor; _g.strokeStyle = this.frontColor;
                 } else {
-                    _g.fillStyle = this.backColor;
-                    _g.strokeStyle = this.backColor;
+                    _g.fillStyle = this.backColor; _g.strokeStyle = this.backColor;
                 }
                 if (i == 0) {
                     _g.beginPath();
                     _g.moveTo(this.particles[i].position.x * retina, this.particles[i].position.y * retina);
                     _g.lineTo(this.particles[i + 1].position.x * retina, this.particles[i + 1].position.y * retina);
                     _g.lineTo(((this.particles[i + 1].position.x + p1.x) * 0.5) * retina, ((this.particles[i + 1].position.y + p1.y) * 0.5) * retina);
-                    _g.closePath();
-                    _g.stroke();
-                    _g.fill();
+                    _g.closePath(); _g.stroke(); _g.fill();
                     _g.beginPath();
                     _g.moveTo(p1.x * retina, p1.y * retina);
                     _g.lineTo(p0.x * retina, p0.y * retina);
                     _g.lineTo(((this.particles[i + 1].position.x + p1.x) * 0.5) * retina, ((this.particles[i + 1].position.y + p1.y) * 0.5) * retina);
-                    _g.closePath();
-                    _g.stroke();
-                    _g.fill();
+                    _g.closePath(); _g.stroke(); _g.fill();
                 } else if (i == this.particleCount - 2) {
                     _g.beginPath();
                     _g.moveTo(this.particles[i].position.x * retina, this.particles[i].position.y * retina);
                     _g.lineTo(this.particles[i + 1].position.x * retina, this.particles[i + 1].position.y * retina);
                     _g.lineTo(((this.particles[i].position.x + p0.x) * 0.5) * retina, ((this.particles[i].position.y + p0.y) * 0.5) * retina);
-                    _g.closePath();
-                    _g.stroke();
-                    _g.fill();
+                    _g.closePath(); _g.stroke(); _g.fill();
                     _g.beginPath();
                     _g.moveTo(p1.x * retina, p1.y * retina);
                     _g.lineTo(p0.x * retina, p0.y * retina);
                     _g.lineTo(((this.particles[i].position.x + p0.x) * 0.5) * retina, ((this.particles[i].position.y + p0.y) * 0.5) * retina);
-                    _g.closePath();
-                    _g.stroke();
-                    _g.fill();
+                    _g.closePath(); _g.stroke(); _g.fill();
                 } else {
                     _g.beginPath();
                     _g.moveTo(this.particles[i].position.x * retina, this.particles[i].position.y * retina);
                     _g.lineTo(this.particles[i + 1].position.x * retina, this.particles[i + 1].position.y * retina);
                     _g.lineTo(p1.x * retina, p1.y * retina);
                     _g.lineTo(p0.x * retina, p0.y * retina);
-                    _g.closePath();
-                    _g.stroke();
-                    _g.fill();
+                    _g.closePath(); _g.stroke(); _g.fill();
                 }
             }
         }
@@ -396,13 +498,11 @@ document.addEventListener("DOMContentLoaded", function () {
             ConfettiRibbon.bounds = new Vector2(canvasWidth, canvasHeight);
         }
         this.start = function () {
-            this.stop()
+            this.stop();
             var context = this;
             this.update();
         }
-        this.stop = function () {
-            cAF(this.interval);
-        }
+        this.stop = function () { cAF(this.interval); }
         this.update = function () {
             var i = 0;
             context.clearRect(0, 0, canvas.width, canvas.height);
@@ -414,14 +514,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 confettiRibbons[i].Update(duration);
                 confettiRibbons[i].Draw(context);
             }
-            this.interval = rAF(function () {
-                confetti.update();
-            });
+            this.interval = rAF(function () { confetti.update(); });
         }
     };
     var confetti = new confetti.Context('confetti');
     confetti.start();
     window.addEventListener('resize', function (event) {
         confetti.resize();
+        resizeFwCanvas();
     });
 });
